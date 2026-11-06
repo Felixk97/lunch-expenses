@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lunch Expenses</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#667085;--line:#e1e5ea;--pri:#1f6feb;--pri-ink:#fff;--soft:#e8f0fe;--bad:#c62828;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1b222b;--ink:#e8ecf1;--mute:#9aa6b5;--line:#2c3643;--pri:#5b9dff;--pri-ink:#0b1320;--soft:#1e2c44;--bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12161c;--card:#1b222b;--ink:#e8ecf1;--mute:#9aa6b5;--line:#2c3643;--pri:#5b9dff;--pri-ink:#0b1320;--soft:#1e2c44;--bad:#ff8a80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:4px 0 10px}
+h2{font-size:16px;margin:0 0 10px}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.tabs{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.tabs button{flex:1;min-width:80px}
+button,input,select{font:inherit;color:inherit}
+button{border:1px solid var(--line);background:var(--card);padding:9px 12px;border-radius:8px;cursor:pointer}
+button.on,button.pri{background:var(--pri);color:var(--pri-ink);border-color:var(--pri);font-weight:600}
+button.sm{padding:3px 8px;font-size:13px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.prev{display:grid;grid-template-columns:1fr auto;gap:3px 12px;margin-top:12px;padding:10px 12px;background:var(--soft);border-radius:8px}
+.prev b{font-size:20px}
+.prev span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+th{font-size:12px;color:var(--mute);font-weight:600}
+tfoot td{font-weight:700;background:var(--soft)}
+.msg{margin-top:8px;color:var(--mute);min-height:20px}
+.err{color:var(--bad)}
+.note{color:var(--mute);font-size:13px}
+.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:99px;padding:3px 6px 3px 12px;margin:3px 4px 3px 0}
+.chip button{border:0;background:none;padding:0 6px;color:var(--bad);font-size:16px}
+textarea{width:100%;min-height:120px;font:12px monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+section{display:none}section.show{display:block}
+</style>
+</head>
+<body>
+<div class="wrap" id="auth">
+  <div class="card" style="max-width:420px;margin:40px auto">
+    <h2 id="a-title">Lunch Expenses</h2>
+    <div><label for="a-pw">Password</label><input id="a-pw" type="password" autocomplete="current-password"></div>
+    <div id="a-pw2w" style="display:none;margin-top:10px"><label for="a-pw2">Repeat password</label><input id="a-pw2" type="password" autocomplete="new-password"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="a-go" style="flex:1">Log in</button></div>
+    <div class="msg err" id="a-msg"></div>
+    <div class="note" id="a-note"></div>
+  </div>
+</div>
+<div class="wrap" id="app" style="display:none">
+<div class="top">
+  <h1>Lunch Expenses</h1>
+  <div style="width:170px"><label for="month">Month</label><input id="month" type="month"></div>
+</div>
+<div class="tabs" id="tabs">
+  <button data-t="entry" class="on">Add entry</button><button data-t="log">Log</button>
+  <button data-t="summary">Summary</button><button data-t="settings">Settings</button>
+</div>
+
+<section id="entry" class="show">
+  <div class="card">
+    <h2>New entry</h2>
+    <div class="grid">
+      <div><label for="f-date">Date</label><input id="f-date" type="date"></div>
+      <div><label for="f-rest">Restaurant</label><input id="f-rest" list="rests" autocomplete="off" placeholder="optional"></div>
+      <div><label for="f-person">Person</label><select id="f-person"></select></div>
+      <div><label for="f-disc">Discount % (blank = none)</label><input id="f-disc" inputmode="decimal" autocomplete="off" placeholder="e.g. 10"></div>
+      <div><label for="f-food">Food + drinks (RM) – tap + to add items</label><div class="row" style="flex-wrap:nowrap;gap:6px"><input id="f-food" inputmode="decimal" autocomplete="off" placeholder="e.g. 12.50+3.50" style="flex:1;min-width:0"><button type="button" id="b-plus" style="padding:7px 16px;font-size:20px;line-height:1" aria-label="Plus">+</button><button type="button" id="b-minus" style="padding:7px 16px;font-size:20px;line-height:1" aria-label="Minus">−</button></div></div>
+      <div><label for="f-ch">Charges</label><select id="f-ch">
+        <option value="both">Service charge + SST</option><option value="sst">SST only</option>
+        <option value="sc">Service charge only</option><option value="none">No charges</option></select></div>
+    </div>
+    <datalist id="rests"></datalist>
+    <div class="prev" id="prev"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="add" style="flex:1">Add to log</button></div>
+    <div class="row" style="margin-top:8px"><button id="copyday" style="flex:1">Copy today’s summary</button></div>
+    <pre id="copyout" class="note" style="display:none;white-space:pre-wrap;margin:8px 0 0;font-family:inherit"></pre>
+    <div class="msg" id="msg"></div>
+    <div class="note">After adding, Date, Restaurant, Discount and Charges stay for the next person at the same table. Changing the restaurant resets Discount and Charges.</div>
+  </div>
+  <div class="card"><h2>Latest entries</h2><div class="scroll" id="recent"></div></div>
+</section>
+
+<section id="log">
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Log for <span id="logm"></span></h2>
+      <div class="row"><button class="sm" id="exp-m">Export month CSV</button><button class="sm" id="exp-a">Export all CSV</button><button class="sm" id="imp">Import CSV</button><input type="file" id="impf" accept=".csv,text/csv" hidden></div></div>
+    <div class="scroll" style="margin-top:10px" id="logt"></div>
+    <div id="csvbox" style="display:none;margin-top:10px"><div class="note">Download is not available here – copy the CSV below:</div><textarea id="csv" readonly></textarea></div>
+  </div>
+</section>
+
+<section id="summary">
+  <div class="card"><h2>Total per person – <span class="sm2" id="sumM"></span></h2><div class="scroll" id="sumt"></div></div>
+  <div class="card"><h2>Daily record (amount to pay)</h2><div class="scroll" id="dayt"></div></div>
+</section>
+
+<section id="settings">
+  <div class="card">
+    <h2>Rates</h2>
+    <div class="grid">
+      <div><label for="s-sc">Service charge %</label><input id="s-sc" inputmode="decimal"></div>
+      <div><label for="s-sst">Service tax (SST) %</label><input id="s-sst" inputmode="decimal"></div>
+      <div><label for="s-onsc">SST charged on food + service charge?</label><select id="s-onsc"><option value="1">Yes (usual)</option><option value="0">No – food only</option></select></div>
+      <div><label for="s-rnd">Round to nearest 5 sen (BNM)?</label><select id="s-rnd"><option value="1">Yes</option><option value="0">No</option></select></div>
+    </div>
+    <div class="note" style="margin-top:8px">Order: food → less discount → + service charge → + SST → round. Rounding is applied to each person’s total. Changing rates only affects new entries.</div>
+  </div>
+  <div class="card">
+    <h2>People</h2>
+    <div class="row"><div style="flex:1;min-width:160px"><label for="s-name">Add a name</label><input id="s-name" autocomplete="off"></div><button id="s-addp">Add</button></div>
+    <div id="plist" style="margin-top:8px"></div>
+    <div class="note">Removing a name keeps their past entries.</div>
+  </div>
+  <div class="card">
+    <h2>Data</h2>
+    <div class="note">All entries are saved on the server behind your password, so the same data shows on your phone and laptop. Use “Export all CSV” (Log tab) now and then as a backup.</div>
+    <div class="row" style="margin-top:8px"><button id="logout" class="sm">Log out</button><button id="wipe" class="sm" style="color:var(--bad)">Delete ALL entries</button></div>
+  </div>
+</section>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const KEY='lunchExpensesV1';
+let S={sc:10,sst:6,onsc:true,rnd:true,people:[],rows:[]},TOKEN=null,NEWACC=false;
+async function api(action,body){
+  const r=await fetch('/.netlify/functions/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,token:TOKEN,...body})});
+  const d=await r.json().catch(()=>({error:'Cannot reach the server'}));
+  if(!r.ok){if(r.status===401&&TOKEN)logout();throw new Error(d.error||'Error')}
+  return d}
+const save=()=>{if(TOKEN)api('settings',{settings:{sc:S.sc,sst:S.sst,onsc:S.onsc,rnd:S.rnd,people:S.people}}).catch(()=>{})};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sumAmt=s=>{const m=String(s).replace(/\s+/g,'').match(/[+-]?[^+-]+/g);if(!m)return NaN;let t=0;for(const x of m){const v=num(x);if(isNaN(v))return NaN;t+=(x[0]==='-'?-v:v)}return Math.round(t*100)/100};
+const num=s=>{const v=parseFloat(String(s).replace(/[^0-9.]/g,''));return isNaN(v)?NaN:v};
+const rm=c=>(c/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const R=x=>Math.round(x+1e-9);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+
+function calc(food,disc,ch){ // all money in cents
+  const after=R(food*(1-disc/100));
+  const sc=(ch==='both'||ch==='sc')?R(after*S.sc/100):0;
+  const sst=(ch==='both'||ch==='sst')?R((after+(S.onsc?sc:0))*S.sst/100):0;
+  const tot=after+sc+sst;
+  const pay=S.rnd?Math.round(tot/5)*5:tot;
+  return {after,sc,sst,rnd:pay-tot,pay};
+}
+
+/* ---------- entry form ---------- */
+function readForm(){
+  const foodV=sumAmt($('#f-food').value), dRaw=$('#f-disc').value.trim(), dV=dRaw===''?0:num(dRaw);
+  return {foodV,dV,ch:$('#f-ch').value,ok:!isNaN(foodV)&&foodV>=0&&!isNaN(dV)&&dV>=0&&dV<=100};
+}
+function preview(){lblCopy();
+  const f=readForm(),p=$('#prev');
+  if(!f.ok||$('#f-food').value.trim()===''){p.innerHTML='<span>Amount to pay</span><span><b>–</b></span>';return}
+  const c=calc(Math.round(f.foodV*100),f.dV,f.ch);
+  p.innerHTML=(/[+-]/.test($('#f-food').value.trim().replace(/^[+-]/,''))?`<span>Items total</span><span>${rm(Math.round(f.foodV*100))}</span>`:'')+`<span>After discount</span><span>${rm(c.after)}</span><span>Service charge</span><span>${rm(c.sc)}</span><span>SST</span><span>${rm(c.sst)}</span><span>Rounding</span><span>${(c.rnd<0?'-':'')+rm(Math.abs(c.rnd))}</span><span><b>Amount to pay</b></span><span><b>RM ${rm(c.pay)}</b></span>`;
+}
+function fillPeople(){
+  const sel=$('#f-person'),cur=sel.value;
+  sel.innerHTML=S.people.length?'<option value="">– choose –</option>'+S.people.map(p=>`<option>${esc(p)}</option>`).join(''):'<option value="">Add names in Settings first</option>';
+  if(S.people.includes(cur))sel.value=cur;
+  $('#rests').innerHTML=[...new Set(S.rows.map(r=>r.rest).filter(Boolean))].map(r=>`<option value="${esc(r)}">`).join('');
+}
+function addEntry(){
+  const m=$('#msg');m.className='msg err';
+  const person=$('#f-person').value,date=$('#f-date').value,f=readForm();
+  if(!date){m.textContent='Please pick a date.';return}
+  if(!person){m.textContent='Please choose the person.';return}
+  if($('#f-food').value.trim()===''||isNaN(f.foodV)){m.textContent='Please type the food amount (you can add items like 12.50+3.50).';return}
+  if(!f.ok){m.textContent='Check the amount and discount (0–100%).';return}
+  const food=Math.round(f.foodV*100),c=calc(food,f.dV,f.ch);
+  const row={id:Date.now()+Math.random().toString(36).slice(2,6),date,rest:$('#f-rest').value.trim(),person,food,disc:f.dV,ch:f.ch,...c};
+  S.rows.push(row);
+  api('add',{rows:[row]}).catch(e=>{S.rows=S.rows.filter(x=>x.id!==row.id);renderAll();const mm=$('#msg');mm.className='msg err';mm.textContent='Not saved – '+e.message});
+  m.className='msg';m.textContent=`Added: ${person} – RM ${rm(c.pay)}`;
+  $('#f-person').value='';$('#f-food').value='';
+  $('#month').value=date.slice(0,7);
+  preview();fillPeople();renderAll();$('#f-person').focus();
+}
+
+/* ---------- tables ---------- */
+const CH={both:'SC + SST',sst:'SST only',sc:'SC only',none:'None'};
+const monthRows=()=>S.rows.filter(r=>r.date.startsWith($('#month').value)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+function rowsTable(rows,withDel){
+  if(!rows.length)return '<div class="note">No entries.</div>';
+  return `<table><thead><tr><th>Date</th><th class="l">Restaurant</th><th class="l">Person</th><th>Food</th><th>Disc</th><th class="l">Charges</th><th>SC</th><th>SST</th><th>Round</th><th>Pay</th><th></th></tr></thead><tbody>`+
+  rows.map(r=>`<tr><td>${r.date.slice(8)}/${r.date.slice(5,7)}</td><td class="l">${esc(r.rest)}</td><td class="l">${esc(r.person)}</td><td>${rm(r.food)}</td><td>${r.disc?r.disc+'%':''}</td><td class="l">${CH[r.ch]}</td><td>${rm(r.sc)}</td><td>${rm(r.sst)}</td><td>${(r.rnd<0?'-':'')+rm(Math.abs(r.rnd))}</td><td><b>${rm(r.pay)}</b></td><td><button class="sm" data-del="${r.id}" title="Delete">✕</button></td></tr>`).join('')+'</tbody></table>';
+}
+function renderAll(){
+  const mo=$('#month').value,rows=monthRows();
+  const label=mo?new Date(mo+'-01T00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}):'';
+  $('#logm').textContent=label;$('#sumM').textContent=label;
+  $('#logt').innerHTML=rowsTable(rows);
+  $('#recent').innerHTML=rowsTable(S.rows.slice(-5).reverse());
+  // per person
+  const names=[...S.people];rows.forEach(r=>{if(!names.includes(r.person))names.push(r.person)});
+  const T={};names.forEach(n=>T[n]={n:0,food:0,sc:0,sst:0,rnd:0,pay:0});
+  rows.forEach(r=>{const t=T[r.person];t.n++;t.food+=r.after;t.sc+=r.sc;t.sst+=r.sst;t.rnd+=r.rnd;t.pay+=r.pay});
+  const G={n:0,food:0,sc:0,sst:0,rnd:0,pay:0};
+  let h='<table><thead><tr><th>Person</th><th>Meals</th><th>Food (after disc.)</th><th>Service charge</th><th>SST</th><th>Rounding</th><th>TOTAL TO PAY</th></tr></thead><tbody>';
+  names.forEach(n=>{const t=T[n];Object.keys(G).forEach(k=>G[k]+=t[k]);
+    h+=`<tr><td>${esc(n)}</td><td>${t.n}</td><td>${rm(t.food)}</td><td>${rm(t.sc)}</td><td>${rm(t.sst)}</td><td>${(t.rnd<0?'-':'')+rm(Math.abs(t.rnd))}</td><td><b>${rm(t.pay)}</b></td></tr>`});
+  h+=`</tbody><tfoot><tr><td>TOTAL</td><td>${G.n}</td><td>${rm(G.food)}</td><td>${rm(G.sc)}</td><td>${rm(G.sst)}</td><td>${(G.rnd<0?'-':'')+rm(Math.abs(G.rnd))}</td><td>${rm(G.pay)}</td></tr></tfoot></table>`;
+  $('#sumt').innerHTML=names.length?h:'<div class="note">No people yet.</div>';
+  // daily grid
+  const days=[...new Set(rows.map(r=>r.date))];
+  if(!days.length){$('#dayt').innerHTML='<div class="note">No entries.</div>'}
+  else{
+    let d='<table><thead><tr><th>Date</th>'+names.map(n=>`<th>${esc(n)}</th>`).join('')+'<th>Day total</th></tr></thead><tbody>';
+    const col={};names.forEach(n=>col[n]=0);let all=0;
+    days.forEach(day=>{let dt=0;d+=`<tr><td>${new Date(day+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})}</td>`;
+      names.forEach(n=>{const v=rows.filter(r=>r.date===day&&r.person===n).reduce((a,r)=>a+r.pay,0);col[n]+=v;dt+=v;d+=`<td>${v?rm(v):'–'}</td>`});
+      all+=dt;d+=`<td><b>${rm(dt)}</b></td></tr>`});
+    d+='</tbody><tfoot><tr><td>MONTH</td>'+names.map(n=>`<td>${rm(col[n])}</td>`).join('')+`<td>${rm(all)}</td></tr></tfoot></table>`;
+    $('#dayt').innerHTML=d;
+  }
+}
+
+/* ---------- copy day summary ---------- */
+function lblCopy(){const b=$('#copyday'),d=$('#f-date').value;if(b&&d)b.textContent=d===today()?'Copy today’s summary':'Copy summary for '+d.split('-').reverse().join('/')}
+function daySummary(date){
+  const rows=S.rows.filter(r=>r.date===date);if(!rows.length)return '';
+  const names=[...S.people.filter(n=>rows.some(r=>r.person===n)),...[...new Set(rows.map(r=>r.person))].filter(n=>!S.people.includes(n))];
+  let tot=0;
+  const lines=names.map(n=>{const rs=rows.filter(r=>r.person===n),food=rs.reduce((a,r)=>a+r.after,0),pay=rs.reduce((a,r)=>a+r.pay,0);tot+=pay;
+    return `${n}: RM${rm(food)} + tax RM${rm(pay-food)} = RM${rm(pay)}`});
+  const rests=[...new Set(rows.map(r=>r.rest).filter(Boolean))];
+  const d=new Date(date+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  return `Lunch – ${d}`+(rests.length?` (${rests.join(', ')})`:'')+'\n'+lines.join('\n')+`\nTotal: RM${rm(tot)}`}
+async function copyDay(){
+  const t=daySummary($('#f-date').value),m=$('#msg'),o=$('#copyout');
+  if(!t){m.className='msg err';m.textContent='No entries for this date yet.';o.style.display='none';return}
+  o.textContent=t;o.style.display='block';
+  let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){}
+  if(!ok){try{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,t.length);ok=document.execCommand('copy');ta.remove()}catch(e){}}
+  m.className=ok?'msg':'msg err';m.textContent=ok?'Copied! Paste it into WhatsApp.':'Could not copy automatically – press and hold the text below to copy it.'}
+
+/* ---------- csv ---------- */
+const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+function toCsv(rows){
+  const h=['Date','Restaurant','Person','Food (RM)','Discount %','Charges','After discount','Service charge','SST','Rounding','Amount to pay'];
+  const f=c=>(c/100).toFixed(2);
+  return [h.map(q).join(',')].concat(rows.map(r=>[r.date,r.rest,r.person,f(r.food),r.disc||'',CH[r.ch],f(r.after),f(r.sc),f(r.sst),f(r.rnd),f(r.pay)].map(q).join(','))).join('\r\n');
+}
+let dl=null;
+(async()=>{try{if(window.claude&&claude.use)dl=await claude.use('downloads')}catch(e){}})();
+async function exportCsv(all){
+  const rows=all?[...S.rows].sort((a,b)=>a.date<b.date?-1:1):monthRows();
+  if(!rows.length){alert('No entries to export.');return}
+  const data='\ufeff'+toCsv(rows),name='lunch-'+(all?'all':$('#month').value)+'.csv';
+  try{
+    if(dl){await dl.save({filename:name,data});return}
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+    if(!(window.claude&&claude.use))return;
+  }catch(e){if(e&&e.code==='declined')return}
+  $('#csv').value=toCsv(rows);$('#csvbox').style.display='block';
+}
+
+function parseCsv(t){t=t.replace(/^\ufeff/,'');const out=[];let row=[],f='',inq=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(inq){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else inq=false}else f+=c}
+    else if(c==='"')inq=true;else if(c===','){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x!==''))out.push(row);row=[]}
+    else f+=c}
+  if(f!==''||row.length){row.push(f);out.push(row)}return out}
+function importCsv(file){const rd=new FileReader();
+  rd.onload=()=>{const rev={'SC + SST':'both','SST only':'sst','SC only':'sc','None':'none'};let add=0,skip=0;const fresh=[];
+    parseCsv(String(rd.result)).slice(1).forEach(r=>{
+      if(r.length<11){skip++;return}
+      const [date,rest,person,food,disc,ch,after,sc,sst,rnd,pay]=r,c=x=>Math.round(parseFloat(x)*100);
+      const o={date,rest,person,food:c(food),disc:parseFloat(disc)||0,ch:rev[ch]||'both',after:c(after),sc:c(sc),sst:c(sst),rnd:c(rnd),pay:c(pay)};
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!person||[o.food,o.after,o.sc,o.sst,o.rnd,o.pay].some(isNaN)){skip++;return}
+      if(S.rows.some(x=>x.date===o.date&&x.rest===o.rest&&x.person===o.person&&x.food===o.food&&x.disc===o.disc&&x.ch===o.ch)){skip++;return}
+      o.id=Date.now()+Math.random().toString(36).slice(2,6);S.rows.push(o);fresh.push(o);if(!S.people.includes(person))S.people.push(person);add++});
+    if(fresh.length)api('add',{rows:fresh}).catch(e=>alert('Not saved – '+e.message));
+    save();renderSettings();fillPeople();renderAll();
+    alert('Imported '+add+' entries'+(skip?', skipped '+skip+' (already there or invalid)':''))};
+  rd.readAsText(file)}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  $('#s-sc').value=S.sc;$('#s-sst').value=S.sst;$('#s-onsc').value=S.onsc?'1':'0';$('#s-rnd').value=S.rnd?'1':'0';
+  $('#plist').innerHTML=S.people.map((p,i)=>`<span class="chip">${esc(p)}<button data-rp="${i}" title="Remove">×</button></span>`).join('')||'<div class="note">No names yet.</div>';
+}
+function addPerson(){
+  const v=$('#s-name').value.trim();if(!v)return;
+  if(!S.people.some(p=>p.toLowerCase()===v.toLowerCase()))S.people.push(v);
+  $('#s-name').value='';save();renderSettings();fillPeople();renderAll();
+}
+
+/* ---------- wiring ---------- */
+$('#tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b===e.target));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('show',s.id===t))});
+['f-food','f-disc'].forEach(i=>$('#'+i).addEventListener('input',preview));
+function addOp(op){const el=$('#f-food'),v=el.value,s=el.selectionStart??v.length,e=el.selectionEnd??v.length;el.value=v.slice(0,s)+op+v.slice(e);el.focus();try{el.setSelectionRange(s+1,s+1)}catch(x){}preview()}
+$('#b-plus').addEventListener('click',()=>addOp('+'));
+$('#b-minus').addEventListener('click',()=>addOp('-'));
+$('#f-ch').addEventListener('change',preview);
+$('#f-rest').addEventListener('change',()=>{$('#f-disc').value='';$('#f-ch').value='both';preview()});
+$('#add').addEventListener('click',addEntry);
+$('#copyday').addEventListener('click',copyDay);
+$('#f-date').addEventListener('change',preview);
+$('#f-food').addEventListener('keydown',e=>{if(e.key==='Enter')addEntry()});
+$('#month').addEventListener('change',renderAll);
+document.addEventListener('click',e=>{
+  const d=e.target.dataset.del;if(d&&confirm('Delete this entry?')){S.rows=S.rows.filter(r=>r.id!==d);api('del',{id:d}).catch(e=>alert('Not deleted – '+e.message));fillPeople();renderAll()}
+  const p=e.target.dataset.rp;if(p!==undefined){S.people.splice(+p,1);save();renderSettings();fillPeople();renderAll()}
+});
+$('#exp-m').addEventListener('click',()=>exportCsv(false));
+$('#exp-a').addEventListener('click',()=>exportCsv(true));
+$('#imp').addEventListener('click',()=>$('#impf').click());
+$('#impf').addEventListener('change',e=>{if(e.target.files[0])importCsv(e.target.files[0]);e.target.value=''});
+$('#s-addp').addEventListener('click',addPerson);
+$('#s-name').addEventListener('keydown',e=>{if(e.key==='Enter')addPerson()});
+[['s-sc','sc'],['s-sst','sst']].forEach(([id,k])=>$('#'+id).addEventListener('change',()=>{const v=num($('#'+id).value);if(!isNaN(v)&&v>=0&&v<=100)S[k]=v;save();renderSettings();preview()}));
+$('#s-onsc').addEventListener('change',e=>{S.onsc=e.target.value==='1';save();preview()});
+$('#s-rnd').addEventListener('change',e=>{S.rnd=e.target.value==='1';save();preview()});
+$('#wipe').addEventListener('click',()=>{if(confirm('Delete ALL entries? This cannot be undone.')&&confirm('Really delete everything?')){S.rows=[];api('clear',{}).catch(e=>alert('Not cleared – '+e.message));fillPeople();renderAll()}});
+
+function enter(d){
+  TOKEN=d.token;
+  try{localStorage.setItem('lunchTok',d.token)}catch(e){}
+  return api('load',{}).then(x=>{
+    const t=x.settings||{};S.sc=t.sc??10;S.sst=t.sst??6;S.onsc=t.onsc??true;S.rnd=t.rnd??true;
+    S.people=t.people||[];S.rows=x.rows||[];
+    $('#auth').style.display='none';$('#app').style.display='block';
+    $('#f-date').value=today();$('#month').value=today().slice(0,7);
+    fillPeople();renderSettings();preview();renderAll()})}
+async function initAuth(){
+  try{NEWACC=!(await api('status',{})).exists}catch(e){$('#a-msg').textContent=e.message;return}
+  $('#a-title').textContent=NEWACC?'Create your password':'Lunch Expenses – log in';
+  $('#a-pw2w').style.display=NEWACC?'block':'none';
+  $('#a-go').textContent=NEWACC?'Create password':'Log in';
+  $('#a-note').textContent=NEWACC?'First time: choose a password (at least 6 characters). Use the same password on your phone and laptop. There is no reset, so keep it safe.':''}
+function logout(){
+  TOKEN=null;try{localStorage.removeItem('lunchTok')}catch(e){}
+  S.rows=[];S.people=[];$('#app').style.display='none';$('#auth').style.display='block';$('#a-pw').value='';$('#a-pw2').value='';initAuth()}
+async function doAuth(){
+  const m=$('#a-msg');m.textContent='';
+  try{
+    if(NEWACC&&$('#a-pw').value!==$('#a-pw2').value)throw new Error('The two passwords do not match');
+    await enter(await api(NEWACC?'register':'login',{password:$('#a-pw').value}));$('#a-pw').value='';$('#a-pw2').value=''
+  }catch(e){m.textContent=e.message}}
+$('#a-go').addEventListener('click',doAuth);
+['a-pw','a-pw2'].forEach(i=>$('#'+i).addEventListener('keydown',e=>{if(e.key==='Enter')doAuth()}));
+$('#logout').addEventListener('click',logout);
+initAuth();
+try{const t=localStorage.getItem('lunchTok');if(t)enter({token:t}).catch(()=>{})}catch(e){}
+</script>
+</body>
+</html>
